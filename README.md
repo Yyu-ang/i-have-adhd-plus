@@ -91,8 +91,8 @@ Four strictness tiers, switched any time with `/i-have-adhd low|medium|high|max`
 
 - **LOW** — rules 1–4 + 10, no character cap
 - **MEDIUM** — rules 1–10, no cap (default)
-- **HIGH** — rules 1–10 + 300-character cap
-- **MAX** — rules 1–3 + 150-character cap
+- **HIGH** — rules 1–10 + 1000-character cap
+- **MAX** — rules 1–3 + 300-character cap
 
 Start every Pi session in a given tier via `~/.pi/agent/i-have-adhd.json`: `{"alwaysOn": "high"}` (`true` also works and means MEDIUM).
 

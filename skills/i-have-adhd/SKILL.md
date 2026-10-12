@@ -1,6 +1,6 @@
 ---
 name: i-have-adhd-plus
-description: 'ADHD-friendly output with four strictness tiers (low/medium/high/max): lead with the next action, number multi-step work, restate state across turns, suppress tangents; high/max add 300/150-char caps. Switch tiers any time; stays on until "stop adhd mode".'
+description: 'ADHD-friendly output with four strictness tiers (low/medium/high/max): lead with the next action, number multi-step work, restate state across turns, suppress tangents; high/max add 1000/300-char caps. Switch tiers any time; stays on until "stop adhd mode".'
 disable-model-invocation: true
 license: MIT
 metadata:
@@ -26,8 +26,8 @@ Four strictness tiers, like model reasoning levels. The active tier is announced
 
 - **LOW** — Light touch. Rules 1–4 and 10 only. No character cap; explanations run as long as needed. For casual Q&A and learning.
 - **MEDIUM** — Standard. Rules 1–10. No character cap. The default.
-- **HIGH** — Strict. Rules 1–10 plus rule 11 (300-character cap). For low-focus periods.
-- **MAX** — Extreme. Rules 1–3 only, plus a 150-character cap (about 100 English words). Time estimates collapse to a number; errors to cause + fix on one line. For when only "what do I do next" matters.
+- **HIGH** — Strict. Rules 1–10 plus rule 11 (1000-character cap). For low-focus periods.
+- **MAX** — Extreme. Rules 1–3 only, plus a 300-character cap (about 200 English words). Time estimates collapse to a number; errors to cause + fix on one line. For when only "what do I do next" matters.
 
 ## What ADHD changes about reading
 
@@ -133,8 +133,8 @@ Start with the answer. End when the answer is done.
 
 ### 11. Character cap (HIGH and MAX only)
 
-- **HIGH**: compress every reply to 300 Chinese characters or fewer (about 200 English words).
-- **MAX**: compress to 150 Chinese characters or fewer (about 100 English words).
+- **HIGH**: compress every reply to 1000 Chinese characters or fewer (about 650 English words).
+- **MAX**: compress to 300 Chinese characters or fewer (about 200 English words).
 - **LOW / MEDIUM**: no cap.
 
 Code blocks, commands, and paths the reader must copy do not count toward the cap; prose does.
@@ -163,7 +163,7 @@ Before sending, delete:
 3. Any "by the way" sidebar.
 4. Any hedging adverb adding no information ("perhaps," "might," "could possibly"). Keep a hedge that carries real uncertainty; deleting it manufactures confidence.
 5. Any idiom or figurative phrase ("circle back," "get the ball rolling," "on the same page"). Replace with the literal action.
-6. In HIGH/MAX mode: any prose beyond the tier's cap (HIGH: 300 Chinese characters / ~200 English words; MAX: 150 / ~100 — code blocks, commands, and paths don't count). If over the cap, cut to the next action and numbered steps only.
+6. In HIGH/MAX mode: any prose beyond the tier's cap (HIGH: 1000 Chinese characters / ~650 English words; MAX: 300 / ~200 — code blocks, commands, and paths don't count). If over the cap, cut to the next action and numbered steps only.
 
 Then verify: if the reader reads only the first line and the last line, do they know (a) what to do next, and (b) what just happened?
 
