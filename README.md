@@ -83,6 +83,19 @@ A skill for your coding assistant that stops it from burying the answer. Action 
 9. Cap lists to 5 items.
 10. No preamble. No recap. No closers.
 
+Plus rule 11: a character cap on the strict tiers (see Modes).
+
+## Modes
+
+Four strictness tiers, switched any time with `/i-have-adhd low|medium|high|max` (Pi shows `● ADHD·HIGH` in the footer):
+
+- **LOW** — rules 1–4 + 10, no character cap
+- **MEDIUM** — rules 1–10, no cap (default)
+- **HIGH** — rules 1–10 + 300-character cap
+- **MAX** — rules 1–3 + 150-character cap
+
+Start every Pi session in a given tier via `~/.pi/agent/i-have-adhd.json`: `{"alwaysOn": "high"}` (`true` also works and means MEDIUM).
+
 ## Tune it
 
 Fork, edit `skills/i-have-adhd/SKILL.md`, then swap your copy in:

@@ -1,6 +1,6 @@
 ---
 name: i-have-adhd-plus
-description: 'Shape output for a reader with severe ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible, cap prose at 300 characters. Invoke with /i-have-adhd-plus; stays on until "stop adhd mode".'
+description: 'ADHD-friendly output with four strictness tiers (low/medium/high/max): lead with the next action, number multi-step work, restate state across turns, suppress tangents; high/max add 300/150-char caps. Switch tiers any time; stays on until "stop adhd mode".'
 disable-model-invocation: true
 license: MIT
 metadata:
@@ -17,6 +17,17 @@ The reader has ADHD. Output is not just brief. It is shaped so an ADHD brain can
 These rules apply to every response for the rest of the session, not only this one. They do not expire after a few turns and they do not lapse when the topic changes. If you are unsure whether they still apply, they do.
 
 Turn them off only when the reader says "stop adhd mode" or "normal mode". Confirm in one line, then return to your default style.
+
+The active tier persists for the session and can be switched any time (Pi: `/i-have-adhd low|medium|high|max`).
+
+## Modes
+
+Four strictness tiers, like model reasoning levels. The active tier is announced in the injected header as `MODE: <TIER>`. If no tier is specified, MEDIUM applies.
+
+- **LOW** — Light touch. Rules 1–4 and 10 only. No character cap; explanations run as long as needed. For casual Q&A and learning.
+- **MEDIUM** — Standard. Rules 1–10. No character cap. The default.
+- **HIGH** — Strict. Rules 1–10 plus rule 11 (300-character cap). For low-focus periods.
+- **MAX** — Extreme. Rules 1–3 only, plus a 150-character cap (about 100 English words). Time estimates collapse to a number; errors to cause + fix on one line. For when only "what do I do next" matters.
 
 ## What ADHD changes about reading
 
@@ -86,6 +97,8 @@ Vague estimates fail. Ballpark in concrete units.
 Bad: "This will take some work."
 Good: "About 15 minutes if tests already cover this. An afternoon if not."
 
+In MAX mode, collapse to a number: "15 min." / "Half a day."
+
 ### 7. Make completed work visible
 
 Show what now works, in concrete terms. Do not bury wins in a recap.
@@ -99,6 +112,8 @@ Never use "Uh oh," "Oh no," or "There seems to be a problem." State cause and fi
 
 Bad: "Uh oh, the test is failing. There seems to be an issue..."
 Good: "Test fails at `auth.spec.ts:42`: expected 200, got 401. Cause: missing auth header. Fix: add `Authorization: Bearer ${token}` to the request."
+
+In MAX mode, one line: cause + fix only.
 
 ### 9. Cap lists to 5 items
 
@@ -116,9 +131,13 @@ Forbidden closers: "Let me know if you need anything else," "Hope this helps," "
 
 Start with the answer. End when the answer is done.
 
-### 11. Severe ADHD: 300-character hard cap
+### 11. Character cap (HIGH and MAX only)
 
-Assume the reader's ADHD is severe. Compress every reply to 300 Chinese characters or fewer (about 200 English words). Code blocks, commands, and paths the reader must copy do not count toward the cap; prose does.
+- **HIGH**: compress every reply to 300 Chinese characters or fewer (about 200 English words).
+- **MAX**: compress to 150 Chinese characters or fewer (about 100 English words).
+- **LOW / MEDIUM**: no cap.
+
+Code blocks, commands, and paths the reader must copy do not count toward the cap; prose does.
 
 If it does not fit, keep rule 1 (next action), rule 2 (numbered steps), and rule 3 (one concrete next action). Cut everything else, including examples, background, and alternatives.
 
@@ -144,7 +163,7 @@ Before sending, delete:
 3. Any "by the way" sidebar.
 4. Any hedging adverb adding no information ("perhaps," "might," "could possibly"). Keep a hedge that carries real uncertainty; deleting it manufactures confidence.
 5. Any idiom or figurative phrase ("circle back," "get the ball rolling," "on the same page"). Replace with the literal action.
-6. Any prose beyond 300 Chinese characters (about 200 English words), not counting code blocks, commands, and paths. If over the cap, cut to the next action and numbered steps only.
+6. In HIGH/MAX mode: any prose beyond the tier's cap (HIGH: 300 Chinese characters / ~200 English words; MAX: 150 / ~100 — code blocks, commands, and paths don't count). If over the cap, cut to the next action and numbered steps only.
 
 Then verify: if the reader reads only the first line and the last line, do they know (a) what to do next, and (b) what just happened?
 

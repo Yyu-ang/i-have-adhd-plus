@@ -25,17 +25,30 @@ const DISABLED_MESSAGE_TYPE = "i-have-adhd-disabled";
 const STATUS_KEY = "i-have-adhd";
 const DISABLE_CONFIRMATION = "ADHD mode disabled.";
 const STOP_PHRASES = new Set(["stop adhd mode", "normal mode"]);
-const RULES_HEADER =
-  'ADHD MODE ACTIVE. The ruleset below applies to every response until turned off. "stop adhd mode" or "normal mode" turns it off for this session.';
+
+type AdhdMode = "low" | "medium" | "high" | "max";
+const MODES: readonly AdhdMode[] = ["low", "medium", "high", "max"];
+const DEFAULT_MODE: AdhdMode = "medium";
+
+function isMode(value: unknown): value is AdhdMode {
+  return (
+    typeof value === "string" &&
+    (MODES as readonly string[]).includes(value)
+  );
+}
+
+const RULES_HEADER = (mode: AdhdMode) =>
+  `ADHD MODE ACTIVE — MODE: ${mode.toUpperCase()}. The ruleset below applies to every response until turned off. "stop adhd mode" or "normal mode" turns it off for this session. Switch tiers with /i-have-adhd low|medium|high|max.`;
 const DISABLED_NOTICE =
   "ADHD MODE OFF. Ignore the i-have-adhd ruleset injected earlier in this conversation and return to your default response style.";
 
 type AdhdModeState = {
   enabled: boolean;
+  mode?: AdhdMode;
 };
 
 type AdhdConfig = {
-  alwaysOn?: boolean;
+  alwaysOn?: boolean | string;
   hideStatus?: boolean;
 };
 
@@ -78,8 +91,8 @@ function loadRules(): string {
   return rules;
 }
 
-function getSavedState(ctx: ExtensionContext): boolean | undefined {
-  let savedState: boolean | undefined;
+function getSavedState(ctx: ExtensionContext): AdhdModeState | undefined {
+  let savedState: AdhdModeState | undefined;
 
   for (const entry of ctx.sessionManager.getBranch()) {
     if (entry.type !== "custom" || entry.customType !== STATE_ENTRY_TYPE) {
@@ -88,7 +101,10 @@ function getSavedState(ctx: ExtensionContext): boolean | undefined {
 
     const data = entry.data as Partial<AdhdModeState> | undefined;
     if (typeof data?.enabled === "boolean") {
-      savedState = data.enabled;
+      savedState = {
+        enabled: data.enabled,
+        mode: isMode(data.mode) ? data.mode : undefined,
+      };
     }
   }
 
@@ -115,6 +131,7 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
   const alwaysOnFlag = join(getAgentDir(), ".i-have-adhd-always");
   const config = loadConfig();
   let enabled = false;
+  let currentMode: AdhdMode = DEFAULT_MODE;
 
   const updateStatus = (ctx: ExtensionContext): void => {
     if (!enabled || config.hideStatus) {
@@ -123,7 +140,10 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
     }
 
     const dot = ctx.ui.theme.fg("success", "●");
-    const label = ctx.ui.theme.fg("accent", "ADHD ON");
+    const label = ctx.ui.theme.fg(
+      "accent",
+      `ADHD·${currentMode.toUpperCase()}`,
+    );
     ctx.ui.setStatus(STATUS_KEY, `${dot} ${label}`);
   };
 
@@ -138,7 +158,7 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
       pi.sendMessage(
         {
           customType: RULES_MESSAGE_TYPE,
-          content: `${RULES_HEADER}\n\n${rules}`,
+          content: `${RULES_HEADER(currentMode)}\n\n${rules}`,
           display: false,
         },
         { triggerTurn: false },
@@ -160,37 +180,80 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
 
   const restoreState = (ctx: ExtensionContext): void => {
     const savedState = getSavedState(ctx);
+    const alwaysOn = config.alwaysOn;
+    const configMode: AdhdMode = isMode(alwaysOn) ? alwaysOn : DEFAULT_MODE;
     const enabledByDefault =
       pi.getFlag("adhd") === true ||
-      config.alwaysOn === true ||
+      alwaysOn === true ||
+      isMode(alwaysOn) ||
       existsSync(alwaysOnFlag);
 
-    enabled = savedState ?? enabledByDefault;
+    enabled = savedState?.enabled ?? enabledByDefault;
+    currentMode = savedState?.mode ?? configMode;
     updateStatus(ctx);
     syncContext(ctx);
   };
 
   const setEnabled = (nextEnabled: boolean, ctx: ExtensionContext): void => {
     enabled = nextEnabled;
-    pi.appendEntry(STATE_ENTRY_TYPE, { enabled } satisfies AdhdModeState);
+    pi.appendEntry(STATE_ENTRY_TYPE, {
+      enabled,
+      mode: currentMode,
+    } satisfies AdhdModeState);
     updateStatus(ctx);
     syncContext(ctx);
-    ctx.ui.notify(`ADHD mode ${enabled ? "enabled" : "disabled"}`, "info");
+    ctx.ui.notify(
+      enabled
+        ? `ADHD mode enabled (${currentMode.toUpperCase()})`
+        : DISABLE_CONFIRMATION,
+      "info",
+    );
+  };
+
+  const setMode = (mode: AdhdMode, ctx: ExtensionContext): void => {
+    if (enabled && currentMode === mode) {
+      ctx.ui.notify(`ADHD mode already at ${mode.toUpperCase()}`, "info");
+      return;
+    }
+
+    enabled = true;
+    currentMode = mode;
+    pi.appendEntry(STATE_ENTRY_TYPE, {
+      enabled: true,
+      mode,
+    } satisfies AdhdModeState);
+    updateStatus(ctx);
+    // Re-inject so the MODE header always matches, even mid-session.
+    pi.sendMessage(
+      {
+        customType: RULES_MESSAGE_TYPE,
+        content: `${RULES_HEADER(mode)}\n\n${rules}`,
+        display: false,
+      },
+      { triggerTurn: false },
+    );
+    ctx.ui.notify(`ADHD mode: ${mode.toUpperCase()}`, "info");
   };
 
   pi.registerFlag("adhd", {
-    description: "Start with ADHD-friendly output enabled",
+    description:
+      "Start with ADHD-friendly output enabled (default MEDIUM tier)",
     type: "boolean",
     default: false,
   });
 
   pi.registerCommand("i-have-adhd", {
-    description: "Toggle ADHD-friendly output for this session",
+    description: "ADHD-friendly output: /i-have-adhd [low|medium|high|max|on|off]",
     handler: async (args, ctx) => {
       const argument = args.trim().toLowerCase();
 
       if (argument === "") {
         setEnabled(!enabled, ctx);
+        return;
+      }
+
+      if (isMode(argument)) {
+        setMode(argument, ctx);
         return;
       }
 
@@ -204,7 +267,10 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
         return;
       }
 
-      ctx.ui.notify("Usage: /i-have-adhd [on|off]", "warning");
+      ctx.ui.notify(
+        "Usage: /i-have-adhd [low|medium|high|max|on|off]",
+        "warning",
+      );
     },
   });
 
@@ -214,7 +280,7 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
     // Keep the built-in skill command working as an alias without letting Pi
     // expand a second copy of the same rules into the conversation.
     if (input === "/skill:i-have-adhd") {
-      setEnabled(true, ctx);
+      setMode(currentMode, ctx);
       return { action: "handled" };
     }
 
