@@ -41,6 +41,10 @@ const RULES_HEADER = (mode: AdhdMode) =>
   `ADHD MODE ACTIVE — MODE: ${mode.toUpperCase()}. The ruleset below applies to every response until turned off. "stop adhd mode" or "normal mode" turns it off for this session. Switch tiers with /i-have-adhd low|medium|high|max.`;
 const DISABLED_NOTICE =
   "ADHD MODE OFF. Ignore the i-have-adhd ruleset injected earlier in this conversation and return to your default response style.";
+const MODE_SWITCH_NOTICE = (mode: AdhdMode) =>
+  `MODE SWITCHED TO ${mode.toUpperCase()}. The previous tier no longer applies. ` +
+  `Apply the ${mode.toUpperCase()} tier exactly as defined in the "Modes" section ` +
+  `of the ruleset injected earlier in this conversation.`;
 
 type AdhdModeState = {
   enabled: boolean;
@@ -148,6 +152,21 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
   };
 
   /**
+   * Inject the full ruleset. Used on fresh enable and when compaction dropped
+   * the injected messages — never on a plain tier switch (see setMode).
+   */
+  const injectFullRuleset = (ctx: ExtensionContext, mode: AdhdMode): void => {
+    pi.sendMessage(
+      {
+        customType: RULES_MESSAGE_TYPE,
+        content: `${RULES_HEADER(mode)}\n\n${rules}`,
+        display: false,
+      },
+      { triggerTurn: false },
+    );
+  };
+
+  /**
    * Keep the conversation in sync with the current mode, the way the Claude Code
    * SessionStart hook does: inject the ruleset once, never per request.
    */
@@ -155,14 +174,7 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
     const injected = rulesAreInContext(ctx);
 
     if (enabled && !injected) {
-      pi.sendMessage(
-        {
-          customType: RULES_MESSAGE_TYPE,
-          content: `${RULES_HEADER(currentMode)}\n\n${rules}`,
-          display: false,
-        },
-        { triggerTurn: false },
-      );
+      injectFullRuleset(ctx, currentMode);
       return;
     }
 
@@ -216,6 +228,12 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
       return;
     }
 
+    // If the full ruleset is already live in context, a tier switch only needs
+    // a tiny notice (~40 tokens). Re-injecting ~9KB of rules on every switch
+    // would bloat the context fast. The notice reuses the rules marker type,
+    // so the newest marker always reflects the active tier; compaction drops
+    // these notices along with the ruleset and syncContext re-injects cleanly.
+    const needsFullRuleset = !rulesAreInContext(ctx);
     enabled = true;
     currentMode = mode;
     pi.appendEntry(STATE_ENTRY_TYPE, {
@@ -223,15 +241,19 @@ export default function iHaveAdhdExtension(pi: ExtensionAPI) {
       mode,
     } satisfies AdhdModeState);
     updateStatus(ctx);
-    // Re-inject so the MODE header always matches, even mid-session.
-    pi.sendMessage(
-      {
-        customType: RULES_MESSAGE_TYPE,
-        content: `${RULES_HEADER(mode)}\n\n${rules}`,
-        display: false,
-      },
-      { triggerTurn: false },
-    );
+
+    if (needsFullRuleset) {
+      injectFullRuleset(ctx, mode);
+    } else {
+      pi.sendMessage(
+        {
+          customType: RULES_MESSAGE_TYPE,
+          content: MODE_SWITCH_NOTICE(mode),
+          display: false,
+        },
+        { triggerTurn: false },
+      );
+    }
     ctx.ui.notify(`ADHD mode: ${mode.toUpperCase()}`, "info");
   };
 
